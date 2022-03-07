@@ -49,7 +49,7 @@ class DadJoke:
         if res.status_code != 200:
             log = {
                 'apiCallStatus': res.status_code,
-                'attemptedOn': self.timestamp,
+                'attemptedAt': self.timestamp,
             }
             self.logger.critical(json.dumps(log))
             raise HTTPError(f"CRITICAL: {res.status_code} - please review and retry.")
@@ -89,10 +89,11 @@ class DadJoke:
         end = time.time()
         log = {
             "executionTime": end - begin,
+            "attemptedAt": self.timestamp,
             "status": "COMPLETE",
             "gcsObject": {
                 "gcsUri":f"gs://{BUCKET}/{blob.name}",
-                "gcsSelfLink":blob.self_link
+                "gcsSelfLink":blob.self_link,
             },
             "bigQueryResult": json.dumps(vars(bq_res), default=str)  
         }
@@ -102,8 +103,6 @@ class DadJoke:
 def entrypoint(request=None):
     joker = DadJoke()
     joker(request)
-    end = time.time()
-    
 
-# Uncomment the call to entrypoint to test locally.
+# # Uncomment the call to entrypoint to test locally.
 # entrypoint()
