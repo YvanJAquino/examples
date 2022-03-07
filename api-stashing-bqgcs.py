@@ -10,6 +10,9 @@ from google.cloud import storage
 from google.cloud import bigquery
 from google.cloud import logging as gcplogs
 
+# Cloud Logging configuration
+logs = gcplogs.Client() 
+logs.setup_logging()
 
 # Must be provided as environment variables.
 PROJECT_ID = os.environ.get("PROJECT_ID")
@@ -17,16 +20,51 @@ BUCKET = os.environ.get("BUCKET")
 DATASET, TABLE = os.environ.get("DATASET"), os.environ.get("TABLE")
 AUTH_TOKEN = os.environ.get("GFW_AUTHTOKEN")
 
+
+class JSONLogger:
+
+    """
+    JSONLogger is a helper class that wraps the default loggers messages 
+    with json.dumps(msg, default=str).      
+    """
+
+    def __init__(self):
+        self.logger = logging
+
+    def log(self, level, msg, *args, default=str, **kwargs):
+        # Convert the message to JSON first.
+        msg = json.dumps(msg, default=default)
+        return self.logger.log(level, msg, *args, **kwargs)
+    
+    def debug(self, msg, *args, **kwargs):
+        level = 10
+        return self.log(level, msg, *args, default=str, **kwargs)
+
+    def info(self, msg, *args, default=str, **kwargs):
+        level = 20
+        return self.log(level, msg, *args, default=str, **kwargs)
+
+    def warning(self, msg, *args, default=str, **kwargs):
+        level = 30
+        return self.log(level, msg, *args, default=str, **kwargs)
+
+    def error(self, msg, *args, default=str, **kwargs):
+        level = 40
+        return self.log(level, msg, *args, default=str, **kwargs)
+
+    def critical(self, msg, *args, default=str, **kwargs):
+        level = 50
+        return self.log(level, msg, *args, default=str, **kwargs)
+
+
 class DadJoke:
 
     def __init__(self, tz=timezone(-timedelta(hours=5))):
         self.url = "https://icanhazdadjoke.com"
         
-        # Cloud Logging configuration
-        logs = gcplogs.Client() 
-        logs.setup_logging()
+
         # Use standard logging library (GCP Logging integrates directly)
-        self.logger = logging  
+        self.logger = JSONLogger()
         # Default UTC -5:00 (EST)
         self.tz = tz
         
@@ -51,7 +89,7 @@ class DadJoke:
                 'apiCallStatus': res.status_code,
                 'attemptedAt': self.timestamp,
             }
-            self.logger.critical(json.dumps(log))
+            self.logger.critical(log)
             raise HTTPError(f"CRITICAL: {res.status_code} - please review and retry.")
         data = res.json()
         data.update({"created": time.time_ns()})
@@ -97,7 +135,7 @@ class DadJoke:
             },
             "bigQueryResult": json.dumps(vars(bq_res), default=str)  
         }
-        self.logger.info(json.dumps(log))
+        self.logger.info(log)
 
 # This is the entrypoint for the Cloud Function.
 def entrypoint(request=None):
